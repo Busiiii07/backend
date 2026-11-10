@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 
+
 const productSchema = new mongoose.Schema(
   {
     nom: {
@@ -36,11 +37,11 @@ const productSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
-    categoria: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Categoria',
-      required: true,
-    },
+   category: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: 'Category',
+  required: [true, 'La categoria és obligatòria'],
+},
   },
   { timestamps: true }
 );

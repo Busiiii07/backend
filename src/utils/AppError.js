@@ -1,9 +1,14 @@
+
 class AppError extends Error {
-  constructor(status, code, message, details) {
+  constructor(status, code, message, details = []) {
     super(message);
+
     this.status = status;
     this.code = code;
     this.details = details;
+
+    Error.captureStackTrace(this, this.constructor);
   }
 }
+
 module.exports = AppError;

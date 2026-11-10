@@ -1,10 +1,11 @@
-const router = require('express').Router();
-const c = require('../controllers/category.controller');
 
-router.post('/', c.create);
-router.get('/', c.list);
-router.get('/:id', c.getById);
-router.put('/:id', c.update);
-router.delete('/:id', c.remove);
+const router = require('express').Router();
+const controller = require('../controllers/category.controller');
+
+router.post('/', controller.create);
+router.get('/', controller.getAll);
+router.get('/:id', controller.getOne);
+router.put('/:id', controller.update);
+router.delete('/:id', controller.remove);
 
 module.exports = router;

@@ -1,47 +1,91 @@
-const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-const badRequest = (field, message) =>
-  Object.assign(new Error('Paràmetres de consulta no vàlids'), {
-    statusCode: 400,
-    code: 'INVALID_QUERY',
-    details: [{ field, message }]
-  });
-
-const positiveInt = (value, field, def, max) => {
-  if (value === undefined) return def;
-  if (!/^\d+$/.test(value) || Number(value) < 1) {
-    throw badRequest(field, 'Ha de ser un enter positiu');
-  }
-  return Math.min(Number(value), max);
-};
+const AppError = require('./utils/AppError');
 
 const MAX_LIMIT = 50;
 
-function buildListQuery(query, { allowedSort, defaultSort = '-createdAt' }) {
+const escapeRegex = (value) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const badRequest = (field, message) =>
+  new AppError(
+    400,
+    'INVALID_QUERY',
+    'Parámetros de consulta no válidos',
+    [{ field, message }]
+  );
+
+const positiveInt = (value, field, defaultValue, max) => {
+  if (value === undefined) return defaultValue;
+
+  if (
+    typeof value !== 'string' ||
+    !/^\d+$/.test(value) ||
+    Number(value) < 1
+  ) {
+    throw badRequest(field, 'Debe ser un entero positivo');
+  }
+
+  return Math.min(Number(value), max);
+};
+
+function buildListQuery(
+  query,
+  { allowedSort, defaultSort = '-createdAt' }
+) {
   const filter = {};
 
+  // Filtro por estado activo
   if (query.active !== undefined) {
     if (!['true', 'false'].includes(query.active)) {
-      throw badRequest('active', 'Ha de ser true o false');
+      throw badRequest('active', 'Debe ser true o false');
     }
+
     filter.active = query.active === 'true';
   }
 
-  if (query.name) {
-    filter.name = { $regex: escapeRegex(String(query.name)), $options: 'i' };
+  // Búsqueda por nombre
+  if (query.name !== undefined) {
+    if (typeof query.name !== 'string') {
+      throw badRequest('name', 'Debe ser un texto');
+    }
+
+    if (query.name.trim()) {
+      filter.name = {
+        $regex: escapeRegex(query.name.trim()),
+        $options: 'i'
+      };
+    }
   }
 
+  // Ordenación
   const sortParam = query.sort || defaultSort;
-  const field = sortParam.startsWith('-') ? sortParam.slice(1) : sortParam;
-  if (!allowedSort.includes(field)) {
-    throw badRequest('sort', `Camp no permès. Permesos: ${allowedSort.join(', ')}`);
-  }
-  const sort = { [field]: sortParam.startsWith('-') ? -1 : 1 };
 
+  if (typeof sortParam !== 'string') {
+    throw badRequest('sort', 'Formato de ordenación incorrecto');
+  }
+
+  const field = sortParam.startsWith('-')
+    ? sortParam.slice(1)
+    : sortParam;
+
+  if (!allowedSort.includes(field)) {
+    throw badRequest(
+      'sort',
+      `Campo no permitido. Permitidos: ${allowedSort.join(', ')}`
+    );
+  }
+
+  const sort = {
+    [field]: sortParam.startsWith('-') ? -1 : 1
+  };
+
+  // Paginación
   const page = positiveInt(query.page, 'page', 1, Number.MAX_SAFE_INTEGER);
   const limit = positiveInt(query.limit, 'limit', 10, MAX_LIMIT);
 
-  return { filter, sort, page, limit, skip: (page - 1) * limit };
+  const skip = (page - 1) * limit;
+
+  return { filter, sort, page, limit, skip };
 }
 
 module.exports = { buildListQuery };
